@@ -82,6 +82,7 @@ model Category {
   slug        String        @unique
   description String?       @db.Text
   isActive    Boolean       @default(true)
+  isFeatured  Boolean       @default(false)
   parentId    String?
   parent      Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children    Category[]    @relation("CategoryHierarchy")
@@ -537,6 +538,7 @@ model Collection {
   slug        String        @unique
   description String?       @db.Text
   isActive    Boolean       @default(true)
+  isFeatured  Boolean       @default(false)
   imageId     String? // Reference to ProductImage
   image       ProductImage? @relation(fields: [imageId], references: [id], onDelete: SetNull)
   products    Product[]
