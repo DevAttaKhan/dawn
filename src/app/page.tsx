@@ -1,7 +1,28 @@
+import prisma from "@/prisma/prisma";
 import Link from "next/link";
 import ProductCard from "@/components/product/ProductCard";
 
-export default function Home() {
+export default async function Home() {
+  // Fetch top featured products (e.g., isFeatured or top 4 by createdAt)
+  const products = await prisma.product.findMany({
+    where: { status: "ACTIVE", isFeatured: true },
+    orderBy: { createdAt: "desc" },
+    take: 4,
+    include: {
+      images: { take: 1 },
+    },
+  });
+
+  // Fetch top collections (e.g., isActive, order by priority, take 3)
+  const collections = await prisma.collection.findMany({
+    where: { isActive: true },
+    orderBy: { priority: "desc" },
+    take: 3,
+    include: {
+      image: true,
+    },
+  });
+
   return (
     <div className="flex flex-col gap-16">
       {/* Hero Section */}
@@ -25,37 +46,37 @@ export default function Home() {
       <section className="container mx-auto px-4">
         <h2 className="text-2xl font-semibold mb-6">Featured Collections</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Collection cards with Link */}
-          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-            <div className="w-32 h-32 bg-gray-200 rounded mb-4" />
-            <h3 className="font-medium text-lg mb-2">Bags</h3>
+          {collections.map((col) => (
             <Link
-              href="/collection/bags"
-              className="text-blue-600 hover:underline"
+              key={col.id}
+              href={`/collection/${col.slug}`}
+              className="group block bg-white rounded-md shadow-sm hover:shadow-md transition overflow-hidden"
             >
-              Shop all
+              <div className="aspect-square bg-gray-100 flex items-center justify-center">
+                {col.image?.url ? (
+                  <img
+                    src={col.image.url}
+                    alt={col.name}
+                    className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="w-32 h-32 flex items-center justify-center text-gray-400 text-2xl">
+                    ?
+                  </div>
+                )}
+              </div>
+              <div className="p-4">
+                <h3 className="font-semibold text-lg mb-1">{col.name}</h3>
+                <p className="text-sm text-gray-500 mb-2 line-clamp-2">
+                  {col.description}
+                </p>
+                <span className="inline-block text-blue-600 font-medium text-sm group-hover:underline">
+                  View collection
+                </span>
+              </div>
             </Link>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-            <div className="w-32 h-32 bg-gray-200 rounded mb-4" />
-            <h3 className="font-medium text-lg mb-2">Shoes</h3>
-            <Link
-              href="/collection/shoes"
-              className="text-blue-600 hover:underline"
-            >
-              Shop all
-            </Link>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-            <div className="w-32 h-32 bg-gray-200 rounded mb-4" />
-            <h3 className="font-medium text-lg mb-2">Lookbook</h3>
-            <Link
-              href="/collection/lookbook"
-              className="text-blue-600 hover:underline"
-            >
-              View
-            </Link>
-          </div>
+          ))}
         </div>
       </section>
 
@@ -63,38 +84,20 @@ export default function Home() {
       <section className="container mx-auto px-4">
         <h2 className="text-2xl font-semibold mb-6">Featured Products</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Dawn-theme ProductCard components */}
-          <ProductCard
-            handle="small-convertible-flex-bag"
-            title="Small Convertible Flex Bag"
-            price="$320.00"
-            compareAtPrice="$395.00"
-            onSale
-            imageUrl={"https://placehold.co/300x300?text=Bag"}
-          />
-          <ProductCard
-            handle="studio-bag"
-            title="Studio Bag"
-            price="$465.00"
-            imageUrl={"https://placehold.co/300x300?text=Studio"}
-          />
-          <ProductCard
-            handle="louise-slide-sandal"
-            title="Louise Slide Sandal"
-            price="$395.00"
-            compareAtPrice="$430.00"
-            onSale
-            imageUrl={"https://placehold.co/300x300?text=Sandal"}
-          />
-          <ProductCard
-            handle="mini-naomi-bag"
-            title="Mini Naomi Bag"
-            price="$299.00"
-            compareAtPrice="$315.00"
-            onSale
-            soldOut
-            imageUrl={"https://placehold.co/300x300?text=Mini+Naomi"}
-          />
+          {products.map((product) => (
+            <ProductCard
+              key={product.id}
+              handle={product.slug}
+              title={product.name}
+              price={`$${(product.salePrice ?? product.basePrice) / 100}`}
+              compareAtPrice={
+                product.salePrice ? `$${product.basePrice / 100}` : undefined
+              }
+              onSale={!!product.salePrice}
+              soldOut={product.inventory === 0}
+              imageUrl={product.images[0]?.url}
+            />
+          ))}
         </div>
       </section>
     </div>
