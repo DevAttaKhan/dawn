@@ -22,3 +22,7 @@
 body {
   @apply bg-white text-neutral-900 font-sans antialiased;
 }
+
+button {
+  @apply cursor-pointer;
+}

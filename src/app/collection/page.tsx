@@ -1,57 +1,73 @@
-"use client";
-import React from "react";
-import Link from "next/link";
+import prisma from "@/prisma/prisma";
+import CollectionGridWithFilters from "@/views/collection/CollectionGridWithFilters";
+import { Prisma } from "@prisma/client";
 
-const collections = [
-  {
-    handle: "bags",
-    title: "Bags",
-    imageUrl: "https://placehold.co/300x300?text=Bags",
-    description: "Shop all bags including totes, crossbody, and more.",
-  },
-  {
-    handle: "shoes",
-    title: "Shoes",
-    imageUrl: "https://placehold.co/300x300?text=Shoes",
-    description: "Discover sandals, boots, and more.",
-  },
-  {
-    handle: "lookbook",
-    title: "Lookbook",
-    imageUrl: "https://placehold.co/300x300?text=Lookbook",
-    description: "Explore our curated lookbook.",
-  },
-];
+const PAGE_SIZE = 3;
 
-export default function CollectionListPage() {
+export default async function CollectionListPage({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[]>;
+}) {
+  const awaitedSearchParams = await searchParams;
+
+  const search = awaitedSearchParams?.q as string;
+  const sort = awaitedSearchParams?.sortBy as string;
+  const page = parseInt(awaitedSearchParams?.page as string) || 1;
+
+  const isFeatured = sort === "featured";
+
+  const where: Prisma.CollectionWhereInput = {
+    ...(isFeatured && { isFeatured: true }),
+
+    ...(search && {
+      name: {
+        contains: search,
+        mode: "insensitive",
+      },
+    }),
+  };
+
+  const orderBy: Prisma.CollectionOrderByWithRelationInput = getSortOrder(sort);
+
+  const total = await prisma.collection.count({ where });
+
+  const collections = await prisma.collection.findMany({
+    where,
+    include: { image: true },
+    orderBy,
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
+  });
+
   return (
     <div className="container mx-auto px-4 py-10">
       <h1 className="text-2xl font-bold mb-8">All Collections</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-        {collections.map((col) => (
-          <Link
-            key={col.handle}
-            href={`/collection/${col.handle}`}
-            className="group block bg-white rounded-md shadow-sm hover:shadow-md transition overflow-hidden"
-          >
-            <div className="aspect-square bg-gray-100 flex items-center justify-center">
-              <img
-                src={col.imageUrl}
-                alt={col.title}
-                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
-                draggable={false}
-              />
-            </div>
-            <div className="p-4">
-              <h2 className="font-semibold text-lg mb-1">{col.title}</h2>
-              <p className="text-sm text-gray-500 mb-2">{col.description}</p>
-              <span className="inline-block text-blue-600 font-medium text-sm group-hover:underline">
-                View collection
-              </span>
-            </div>
-          </Link>
-        ))}
-      </div>
+
+      <CollectionGridWithFilters
+        collections={collections}
+        total={total}
+        page={page}
+        pageSize={PAGE_SIZE}
+      />
     </div>
   );
+}
+
+function getSortOrder(
+  sort?: string
+): Prisma.CollectionOrderByWithRelationInput {
+  switch (sort) {
+    case "name-asc":
+      return { name: "asc" };
+    case "name-desc":
+      return { name: "desc" };
+    case "date-asc":
+      return { createdAt: "asc" };
+    case "date-desc":
+      return { createdAt: "desc" };
+    case "featured":
+    default:
+      return { priority: "desc" };
+  }
 }
