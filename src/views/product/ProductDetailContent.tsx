@@ -79,12 +79,10 @@ const ProductDetailContent: React.FC<ProductDetailContentProps> = ({
         <div className="flex-1 max-w-lg mx-auto lg:mx-0">
           <h1 className="text-2xl font-bold mb-2">{product.name}</h1>
           <div className="flex items-center gap-2 mb-4">
-            <span className="font-semibold text-xl">
-              ${(price / 100).toFixed(2)}
-            </span>
+            <span className="font-semibold text-xl">${price.toFixed(2)}</span>
             {compareAtPrice && price < compareAtPrice && (
               <span className="text-gray-400 line-through text-base">
-                ${(compareAtPrice / 100).toFixed(2)}
+                ${compareAtPrice.toFixed(2)}
               </span>
             )}
             {price < compareAtPrice && !soldOut && (

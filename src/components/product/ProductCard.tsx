@@ -1,6 +1,9 @@
 /* eslint-disable @next/next/no-img-element */
 import React from "react";
 import Link from "next/link";
+import { useDispatch } from "react-redux";
+import { addItem, openDrawer } from "@/store/cartSlice";
+import { toast } from "react-hot-toast";
 
 type ProductCardProps = {
   handle: string;
@@ -21,6 +24,31 @@ const ProductCard: React.FC<ProductCardProps> = ({
   soldOut = false,
   onSale = false,
 }) => {
+  const dispatch = useDispatch();
+
+  // Parse price string like "$320.00" to cents
+  const priceCents = React.useMemo(() => {
+    const match = price.match(/\d+(?:\.\d{1,2})?/);
+    return match ? Math.round(parseFloat(match[0]) * 100) : 0;
+  }, [price]);
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (soldOut) return;
+    dispatch(
+      addItem({
+        id: handle,
+        name: title,
+        slug: handle,
+        imageUrl,
+        price: priceCents,
+        quantity: 1,
+      })
+    );
+    dispatch(openDrawer());
+    toast.success("Added to cart!");
+  };
+
   return (
     <Link
       href={`/product/${handle}`}
@@ -70,6 +98,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           disabled={soldOut}
           tabIndex={-1}
           type="button"
+          onClick={handleAddToCart}
         >
           {soldOut ? "Sold out" : "Add to cart"}
         </button>

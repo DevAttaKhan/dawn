@@ -5,6 +5,9 @@ import Link from "next/link";
 import ProductCard from "@/components/product/ProductCard";
 import { Product, Collection, Prisma } from "@prisma/client";
 import MobileNav from "./MobileNav";
+import { useDispatch, useSelector } from "react-redux";
+import { openDrawer } from "@/store/cartSlice";
+import { RootState } from "@/store";
 
 type CategoryWithImage = Prisma.CategoryGetPayload<{
   include: {
@@ -35,6 +38,10 @@ const HeaderClientNav: React.FC<HeaderClientNavProps> = ({
   collectionProducts,
 }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const dispatch = useDispatch();
+  const cartCount = useSelector((state: RootState) =>
+    state.cart.items.reduce((sum, item) => sum + item.quantity, 0)
+  );
 
   return (
     <header className="w-full bg-white z-50 relative">
@@ -145,9 +152,12 @@ const HeaderClientNav: React.FC<HeaderClientNavProps> = ({
               key={cat.id}
               className="group flex items-center cursor-pointer"
             >
-              <button className="hover:text-gray-900 transition-colors focus:outline-none">
+              <Link
+                href={`/shop?category=${cat.name}`}
+                className="hover:text-gray-900 transition-colors focus:outline-none"
+              >
                 {cat.name}
-              </button>
+              </Link>
 
               {/* Mega Menu for this category */}
               <div className="absolute left-0 top-full w-screen max-w-none pointer-events-none group-hover:pointer-events-auto z-50">
@@ -163,7 +173,7 @@ const HeaderClientNav: React.FC<HeaderClientNavProps> = ({
                         {cat?.children?.map((col) => (
                           <Link
                             key={col.id}
-                            href={`/collection/${col.slug}`}
+                            href={`/shop?category=${col.name}`}
                             className="flex items-center gap-3 p-2 rounded hover:bg-gray-100 transition"
                           >
                             <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center overflow-hidden">
@@ -287,7 +297,11 @@ const HeaderClientNav: React.FC<HeaderClientNavProps> = ({
             </svg>
           </button>
           {/* Cart */}
-          <button aria-label="Cart" className="p-2 hover:bg-gray-100 rounded">
+          <button
+            aria-label="Cart"
+            className="relative p-2 hover:bg-gray-100 rounded"
+            onClick={() => dispatch(openDrawer())}
+          >
             <svg
               width="20"
               height="20"
@@ -300,6 +314,11 @@ const HeaderClientNav: React.FC<HeaderClientNavProps> = ({
               <circle cx="20" cy="21" r="1" />
               <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
             </svg>
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center font-bold">
+                {cartCount}
+              </span>
+            )}
           </button>
         </div>
       </div>

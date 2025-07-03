@@ -32,13 +32,6 @@ export default async function ProductDetailPage({ params }: ProductPageProps) {
 
   if (!product) return notFound();
 
-  // Prepare option values for dynamic variant selection
-  const optionNames = product.options.map((opt) => opt.name);
-  const optionValues = product.options.reduce((acc, opt) => {
-    acc[opt.name] = opt.values.map((v) => v.value);
-    return acc;
-  }, {} as Record<string, string[]>);
-
   // Default selected options as array of SelectOptionType
   const defaultSelectedOptions: SelectOptionType[] = product.options
     .map((opt) => {
