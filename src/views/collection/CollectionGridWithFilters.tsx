@@ -43,6 +43,7 @@ const CollectionGridWithFilters: React.FC<Props> = ({
         const params = getParams();
         if (!value) params.delete("q");
         else params.set("q", value);
+        params.set("page", "1");
         navigateWithQueryParams(params);
       }, 300),
     [getParams, navigateWithQueryParams]

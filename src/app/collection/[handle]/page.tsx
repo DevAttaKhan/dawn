@@ -1,77 +1,90 @@
 import prisma from "@/prisma/prisma";
-import ProductCard from "@/components/product/ProductCard";
+import ProductGridWithFilters from "@/views/product/ProductGridWithFilters";
 import { notFound } from "next/navigation";
+import { Prisma } from "@prisma/client";
+import { SortOption } from "@/types/enums";
+
+const PAGE_SIZE = 9;
 
 interface CollectionPageProps {
   params: { handle: string };
+  searchParams: Record<string, string | string[]>;
 }
 
 export default async function CollectionHandlePage({
   params,
+  searchParams,
 }: CollectionPageProps) {
   const { handle } = params;
-  // Fetch collection by slug, including products and their images
+  const awaitedSearchParams = await searchParams;
+
+  // Parse query params
+  const search = (awaitedSearchParams?.q as string) || "";
+  const sort = awaitedSearchParams?.sortBy as string;
+  const page = parseInt((awaitedSearchParams?.page as string) || "1", 10) || 1;
+  const isFeatured = sort === "featured";
+
   const collection = await prisma.collection.findUnique({
     where: { slug: handle },
-    include: {
-      products: {
-        where: { status: "ACTIVE" },
-        include: { images: { take: 1 } },
-      },
-      image: true,
-    },
+    select: { id: true, name: true, description: true },
   });
 
-  if (!collection) return notFound();
+  if (!collection) notFound();
+
+  // Build product filter
+  const productWhere: Prisma.ProductWhereInput = {
+    collections: { some: { id: collection.id } },
+    status: "ACTIVE",
+    ...(search && {
+      name: { contains: search, mode: "insensitive" },
+    }),
+    ...(isFeatured && { isFeatured: true }),
+  };
+
+  // Sorting
+  const orderBy = getSortOrder(sort);
+
+  // Count total for pagination
+  const total = await prisma.product.count({ where: productWhere });
+
+  // Fetch paginated products
+  const products = await prisma.product.findMany({
+    where: productWhere,
+    include: { images: { take: 1 } },
+    orderBy,
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
+  });
 
   return (
     <div className="container mx-auto px-4 py-10">
-      <div className="flex flex-col md:flex-row gap-8 mb-8">
-        {/* Collection Image */}
-        {collection.image?.url && (
-          <div className="w-full md:w-1/3 aspect-square bg-gray-100 rounded-md overflow-hidden flex items-center justify-center mb-4 md:mb-0">
-            <img
-              src={collection.image.url}
-              alt={collection.name}
-              className="object-cover w-full h-full"
-              draggable={false}
-            />
-          </div>
-        )}
-        {/* Collection Info */}
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold mb-2">{collection.name}</h1>
-          {collection.description && (
-            <p className="text-gray-600 mb-4">{collection.description}</p>
-          )}
-        </div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold ">{collection?.name}</h1>
+        <p className="text-gray-400">{collection?.description}</p>
       </div>
-      {/* Product Grid */}
-      <div>
-        <h2 className="text-2xl font-semibold mb-6">Products</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {collection.products.length > 0 ? (
-            collection.products.map((product) => (
-              <ProductCard
-                key={product.id}
-                handle={product.slug}
-                title={product.name}
-                price={`$${(product.salePrice ?? product.basePrice) / 100}`}
-                compareAtPrice={
-                  product.salePrice ? `$${product.basePrice / 100}` : undefined
-                }
-                onSale={!!product.salePrice}
-                soldOut={product.inventory === 0}
-                imageUrl={product.images[0]?.url}
-              />
-            ))
-          ) : (
-            <div className="col-span-full text-center text-gray-500 py-12">
-              No products found in this collection.
-            </div>
-          )}
-        </div>
-      </div>
+      <ProductGridWithFilters
+        products={products}
+        total={total}
+        page={page}
+        pageSize={PAGE_SIZE}
+        currentFilters={{ search, sort }}
+      />
     </div>
   );
+}
+
+function getSortOrder(sort?: string): Prisma.ProductOrderByWithRelationInput {
+  switch (sort) {
+    case SortOption.NAME_ASC:
+      return { name: "asc" };
+    case SortOption.NAME_DESC:
+      return { name: "desc" };
+    case SortOption.DATE_ASC:
+      return { createdAt: "asc" };
+    case SortOption.DATE_DESC:
+      return { createdAt: "desc" };
+    case SortOption.FEATURED:
+    default:
+      return {};
+  }
 }
